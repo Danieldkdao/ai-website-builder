@@ -19,13 +19,18 @@ export const messagesRouter = createTRPCRouter({
   create: baseProcedure
     .input(
       z.object({
-        value: z.string().min(1, { error: "Message is required" }),
+        value: z
+          .string()
+          .min(1, { error: "Value is required" })
+          .max(10000, { error: "Value is too long" }),
+        projectId: z.string().min(1, { error: "Project ID is required" }),
       })
     )
     .mutation(async ({ input }) => {
       const [createdMessage] = await db
         .insert(MessageTable)
         .values({
+          projectId: input.projectId,
           content: input.value,
           role: "user",
           type: "result",
@@ -36,6 +41,7 @@ export const messagesRouter = createTRPCRouter({
         name: "code-agent/run",
         data: {
           value: input.value,
+          projectId: input.projectId,
         },
       });
 

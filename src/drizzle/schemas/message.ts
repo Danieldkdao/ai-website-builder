@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { FragmentTable } from "./fragment";
+import { ProjectTable } from "./project";
 
 export const messageRoles = ["user", "assistant"] as const;
 export type MessageRole = (typeof messageRoles)[number];
@@ -12,6 +13,11 @@ export const MessageTypeEnum = pgEnum("message_type", messageTypes);
 
 export const MessageTable = pgTable("messages", {
   id: uuid().primaryKey().defaultRandom(),
+  projectId: uuid()
+    .notNull()
+    .references(() => ProjectTable.id, {
+      onDelete: "cascade",
+    }),
   content: varchar().notNull(),
   role: MessageRoleEnum().notNull(),
   type: MessageTypeEnum().notNull(),
@@ -26,5 +32,9 @@ export const messagesRelations = relations(MessageTable, ({ one }) => ({
   fragment: one(FragmentTable, {
     fields: [MessageTable.id],
     references: [FragmentTable.messageId],
+  }),
+  project: one(ProjectTable, {
+    fields: [MessageTable.projectId],
+    references: [ProjectTable.id],
   }),
 }));

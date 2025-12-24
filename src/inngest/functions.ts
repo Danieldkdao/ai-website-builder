@@ -31,7 +31,7 @@ export const codeAgentFunction = inngest.createFunction(
       name: "code-agent",
       description: "An expert coding agent.",
       system: PROMPT,
-      model: gemini({ model: "gemini-2.5-flash-lite" }),
+      model: gemini({ model: "gemini-2.5-flash" }),
       tools: [
         createTool({
           name: "terminal",
@@ -168,14 +168,16 @@ export const codeAgentFunction = inngest.createFunction(
     await step.run("save-result", async () => {
       if (isError) {
         return await db.insert(MessageTable).values({
+          projectId: event.data.projectId,
           content: "Something went wrong. Please try again.",
           role: "assistant",
           type: "error",
-        });
+        }).returning();
       }
       const [newMessage] = await db
         .insert(MessageTable)
         .values({
+          projectId: event.data.projectId,
           content: result.state.data.summary,
           role: "assistant",
           type: "result",
