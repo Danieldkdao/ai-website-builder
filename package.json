@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@e2b/code-interpreter": "^2.3.3",
     "@hookform/resolvers": "^5.2.2",
     "@inngest/agent-kit": "^0.13.2",
     "@neondatabase/serverless": "^1.0.2",
