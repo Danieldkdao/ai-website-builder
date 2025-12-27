@@ -18,32 +18,36 @@ export const MessagesContainer = ({
   setActiveFragment,
 }: MessagesContainerProps) => {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastAssistantMessageIdRef = useRef<string | null>(null);
   const trpc = useTRPC();
   const { data: messages } = useSuspenseQuery(
-    trpc.messages.getMany.queryOptions({
-      projectId,
-    }, {
-      // todo: temporary live message update
-      refetchInterval: 5000,
-    })
+    trpc.messages.getMany.queryOptions(
+      {
+        projectId,
+      },
+      {
+        // todo: temporary live message update
+        refetchInterval: 5000,
+      }
+    )
   );
 
-  // todo: this is causing problems
-  // useEffect(() => {
-  //   const lastAssistantMessageWithFragment = messages.findLast(
-  //     (message) => message.role === "assistant" && message.fragment
-  //   );
+  useEffect(() => {
+    const lastAssistantMessage = messages.findLast(
+      (message) => message.role === "assistant"
+    );
 
-  //   if (lastAssistantMessageWithFragment) {
-  //     setActiveFragment(lastAssistantMessageWithFragment.fragment);
-  //   }
-  // }, [messages, setActiveFragment]);
+    if (lastAssistantMessage?.fragment && lastAssistantMessage.id !== lastAssistantMessageIdRef.current) {
+      setActiveFragment(lastAssistantMessage.fragment);
+      lastAssistantMessageIdRef.current = lastAssistantMessage.id;
+    }
+  }, [messages, setActiveFragment]);
 
-  // useEffect(() => {
-  //   bottomRef.current?.scrollIntoView({
-  //     behavior: "smooth",
-  //   });
-  // }, [messages.length]);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages.length]);
 
   const lastMesssage = messages[messages.length - 1];
   const isLastMessageUser = lastMesssage?.role === "user";
