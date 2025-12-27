@@ -12,7 +12,6 @@ const Page = () => {
   const [value, setValue] = useState("");
   const trpc = useTRPC();
   const router = useRouter();
-  const { data: messages } = useQuery(trpc.messages.getMany.queryOptions());
   const createProject = useMutation(
     trpc.projects.create.mutationOptions({
       onError: (err) => {

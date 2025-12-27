@@ -2,20 +2,27 @@ import { db } from "@/drizzle/db";
 import { MessageTable } from "@/drizzle/schema";
 import { inngest } from "@/inngest/client";
 import { baseProcedure, createTRPCRouter } from "@/trpc/init";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import z from "zod";
 
 export const messagesRouter = createTRPCRouter({
-  getMany: baseProcedure.query(async () => {
-    const messages = await db.query.MessageTable.findMany({
-      orderBy: asc(MessageTable.createdAt),
-      with: {
-        fragment: true,
-      },
-    });
+  getMany: baseProcedure
+    .input(
+      z.object({
+        projectId: z.string().min(1, { message: "Project ID is required" }),
+      })
+    )
+    .query(async ({ input }) => {
+      const messages = await db.query.MessageTable.findMany({
+        where: eq(MessageTable.projectId, input.projectId),
+        orderBy: asc(MessageTable.createdAt),
+        with: {
+          fragment: true,
+        },
+      });
 
-    return messages;
-  }),
+      return messages;
+    }),
   create: baseProcedure
     .input(
       z.object({

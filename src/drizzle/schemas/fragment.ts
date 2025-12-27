@@ -31,3 +31,5 @@ export const fragmentsRelations = relations(FragmentTable, ({ one }) => ({
     references: [MessageTable.id],
   }),
 }));
+
+export type FragmentType = typeof FragmentTable.$inferSelect;
