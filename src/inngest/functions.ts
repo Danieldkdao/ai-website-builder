@@ -167,12 +167,16 @@ export const codeAgentFunction = inngest.createFunction(
 
     await step.run("save-result", async () => {
       if (isError) {
-        return await db.insert(MessageTable).values({
-          projectId: event.data.projectId,
-          content: "Something went wrong. Please try again.",
-          role: "assistant",
-          type: "error",
-        }).returning();
+        return await db
+          .insert(MessageTable)
+          .values({
+            projectId: event.data.projectId,
+            content: "Something went wrong. Please try again.",
+            role: "assistant",
+            type: "error",
+            userId: event.data.userId,
+          })
+          .returning();
       }
       const [newMessage] = await db
         .insert(MessageTable)
@@ -181,6 +185,7 @@ export const codeAgentFunction = inngest.createFunction(
           content: result.state.data.summary,
           role: "assistant",
           type: "result",
+          userId: event.data.userId,
         })
         .returning();
 

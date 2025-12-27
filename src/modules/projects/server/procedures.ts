@@ -1,18 +1,21 @@
 import { db } from "@/drizzle/db";
 import { MessageTable, ProjectTable } from "@/drizzle/schema";
 import { inngest } from "@/inngest/client";
-import { baseProcedure, createTRPCRouter } from "@/trpc/init";
-import { desc, eq } from "drizzle-orm";
+import { protectedProcedure, createTRPCRouter } from "@/trpc/init";
+import { and, desc, eq } from "drizzle-orm";
 import z from "zod";
 import { generateSlug } from "random-word-slugs";
 import { TRPCError } from "@trpc/server";
 
 export const projectsRouter = createTRPCRouter({
-  getOne: baseProcedure
+  getOne: protectedProcedure
     .input(z.object({ id: z.string().min(1, { error: "ID is required" }) }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const existingProject = await db.query.ProjectTable.findFirst({
-        where: eq(ProjectTable.id, input.id),
+        where: and(
+          eq(ProjectTable.id, input.id),
+          eq(ProjectTable.userId, ctx.auth.userId)
+        ),
       });
 
       if (!existingProject) {
@@ -24,14 +27,15 @@ export const projectsRouter = createTRPCRouter({
 
       return existingProject;
     }),
-  getMany: baseProcedure.query(async () => {
+  getMany: protectedProcedure.query(async ({ ctx }) => {
     const projects = await db.query.ProjectTable.findMany({
+      where: eq(ProjectTable.userId, ctx.auth.userId),
       orderBy: desc(ProjectTable.createdAt),
     });
 
     return projects;
   }),
-  create: baseProcedure
+  create: protectedProcedure
     .input(
       z.object({
         value: z
@@ -40,13 +44,14 @@ export const projectsRouter = createTRPCRouter({
           .max(10000, { error: "Value is too long" }),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const [createdProject] = await db
         .insert(ProjectTable)
         .values({
           name: generateSlug(2, {
             format: "kebab",
           }),
+          userId: ctx.auth.userId,
         })
         .returning();
 
@@ -55,6 +60,7 @@ export const projectsRouter = createTRPCRouter({
         content: input.value,
         role: "user",
         type: "result",
+        userId: ctx.auth.userId,
       });
 
       await inngest.send({
@@ -62,6 +68,7 @@ export const projectsRouter = createTRPCRouter({
         data: {
           value: input.value,
           projectId: createdProject.id,
+          userId: ctx.auth.userId,
         },
       });
 

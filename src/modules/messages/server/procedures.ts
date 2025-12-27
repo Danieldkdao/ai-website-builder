@@ -1,20 +1,24 @@
 import { db } from "@/drizzle/db";
-import { MessageTable } from "@/drizzle/schema";
+import { MessageTable, ProjectTable } from "@/drizzle/schema";
 import { inngest } from "@/inngest/client";
-import { baseProcedure, createTRPCRouter } from "@/trpc/init";
-import { asc, eq } from "drizzle-orm";
+import { protectedProcedure, createTRPCRouter } from "@/trpc/init";
+import { TRPCError } from "@trpc/server";
+import { and, asc, eq } from "drizzle-orm";
 import z from "zod";
 
 export const messagesRouter = createTRPCRouter({
-  getMany: baseProcedure
+  getMany: protectedProcedure
     .input(
       z.object({
         projectId: z.string().min(1, { message: "Project ID is required" }),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const messages = await db.query.MessageTable.findMany({
-        where: eq(MessageTable.projectId, input.projectId),
+        where: and(
+          eq(MessageTable.projectId, input.projectId),
+          eq(MessageTable.userId, ctx.auth.userId)
+        ),
         orderBy: asc(MessageTable.createdAt),
         with: {
           fragment: true,
@@ -23,7 +27,7 @@ export const messagesRouter = createTRPCRouter({
 
       return messages;
     }),
-  create: baseProcedure
+  create: protectedProcedure
     .input(
       z.object({
         value: z
@@ -33,14 +37,29 @@ export const messagesRouter = createTRPCRouter({
         projectId: z.string().min(1, { error: "Project ID is required" }),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const existingProject = await db.query.ProjectTable.findFirst({
+        where: and(
+          eq(ProjectTable.id, input.projectId),
+          eq(ProjectTable.userId, ctx.auth.userId)
+        ),
+      });
+
+      if (!existingProject) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Project not found",
+        });
+      }
+
       const [createdMessage] = await db
         .insert(MessageTable)
         .values({
-          projectId: input.projectId,
+          projectId: existingProject.id,
           content: input.value,
           role: "user",
           type: "result",
+          userId: ctx.auth.userId,
         })
         .returning();
 
@@ -49,6 +68,7 @@ export const messagesRouter = createTRPCRouter({
         data: {
           value: input.value,
           projectId: input.projectId,
+          userId: ctx.auth.userId,
         },
       });
 

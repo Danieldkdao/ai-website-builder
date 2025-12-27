@@ -18,6 +18,7 @@ export const MessageTable = pgTable("messages", {
     .references(() => ProjectTable.id, {
       onDelete: "cascade",
     }),
+  userId: varchar().notNull(),
   content: varchar().notNull(),
   role: MessageRoleEnum().notNull(),
   type: MessageTypeEnum().notNull(),
