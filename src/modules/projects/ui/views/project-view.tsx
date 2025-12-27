@@ -6,9 +6,14 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { MessagesContainer } from "../components/messages-container";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
+import type { FragmentType } from "@/drizzle/schema";
+import { ProjectHeader } from "../components/project-header";
 
 export const ProjectView = ({ projectId }: { projectId: string }) => {
+  const [activeFragment, setActiveFragment] = useState<FragmentType | null>(
+    null
+  );
   return (
     <div className="h-screen">
       <ResizablePanelGroup direction="horizontal">
@@ -17,8 +22,15 @@ export const ProjectView = ({ projectId }: { projectId: string }) => {
           minSize={20}
           className="flex flex-col min-h-0"
         >
+          <Suspense fallback={<p>Loading project...</p>}>
+            <ProjectHeader projectId={projectId} />
+          </Suspense>
           <Suspense fallback={<p>Loading messages...</p>}>
-            <MessagesContainer projectId={projectId} />
+            <MessagesContainer
+              projectId={projectId}
+              activeFragment={activeFragment}
+              setActiveFragment={setActiveFragment}
+            />
           </Suspense>
         </ResizablePanel>
         <ResizableHandle withHandle />
