@@ -1,3 +1,4 @@
+import { envServer } from "@/data/env/server";
 import { auth } from "@clerk/nextjs/server";
 import { initTRPC, TRPCError } from "@trpc/server";
 import { cache } from "react";
@@ -17,6 +18,13 @@ const isAuthed = t.middleware(({ next, ctx }) => {
     throw new TRPCError({
       code: "UNAUTHORIZED",
       message: "Not authenticated",
+    });
+  }
+
+  if(ctx.auth.userId !== envServer.ALLOWED_USER) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "Feature disabled",
     });
   }
 

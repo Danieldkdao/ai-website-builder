@@ -4,6 +4,7 @@ import z from "zod";
 export const envServer = createEnv({
   server: {
     DATABASE_URL: z.string().min(1),
+    ALLOWED_USER: z.string().min(1),
   },
   emptyStringAsUndefined: true,
   experimental__runtimeEnv: true,
