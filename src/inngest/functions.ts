@@ -5,13 +5,16 @@ import {
   createTool,
   createNetwork,
   type Tool,
+  type Message,
+  createState,
 } from "@inngest/agent-kit";
 import { Sandbox } from "@e2b/code-interpreter";
-import { getSandbox, lastAssistantTextMessageContent } from "./utils";
+import { getSandbox, lastAssistantTextMessageContent, parseAgentOutput } from "./utils";
 import z from "zod";
-import { PROMPT } from "@/prompt";
+import { FRAGMENT_TITLE_PROMPT, PROMPT, RESPONSE_PROMPT } from "@/prompt";
 import { db } from "@/drizzle/db";
 import { FragmentTable, MessageTable } from "@/drizzle/schema";
+import { desc, eq } from "drizzle-orm";
 
 type AgentState = {
   summary: string;
@@ -26,6 +29,38 @@ export const codeAgentFunction = inngest.createFunction(
       const sandbox = await Sandbox.create("awb-nextjs-dd");
       return sandbox.sandboxId;
     });
+
+    const previousMessages = await step.run(
+      "get-previous-messages",
+      async () => {
+        const formattedMessages: Message[] = [];
+
+        const messages = await db.query.MessageTable.findMany({
+          where: eq(MessageTable.projectId, event.data.projectId),
+          orderBy: desc(MessageTable.createdAt), //todo: change to asc if AI does not understand what is the latest message
+        });
+
+        for (const message of messages) {
+          formattedMessages.push({
+            type: "text",
+            role: message.role,
+            content: message.content,
+          });
+        }
+
+        return formattedMessages;
+      }
+    );
+
+    const state = createState<AgentState>(
+      {
+        summary: "",
+        files: {},
+      },
+      {
+        messages: previousMessages,
+      }
+    );
 
     const codeAgent = createAgent<AgentState>({
       name: "code-agent",
@@ -144,6 +179,7 @@ export const codeAgentFunction = inngest.createFunction(
       name: "coding-agent-network",
       agents: [codeAgent],
       maxIter: 15,
+      defaultState: state,
       router: async ({ network }) => {
         const summary = network.state.data.summary;
 
@@ -153,7 +189,28 @@ export const codeAgentFunction = inngest.createFunction(
       },
     });
 
-    const result = await network.run(event.data.value);
+    const result = await network.run(event.data.value, { state });
+
+    const fragmentTitleGenerator = createAgent({
+      name: "fragment-title-generator",
+      description: "A fragment title generator",
+      system: FRAGMENT_TITLE_PROMPT,
+      model: gemini({ model: "gemini-2.5-flash-lite" }),
+    });
+
+    const responseGenerator = createAgent({
+      name: "response-generator",
+      description: "A response generator",
+      system: RESPONSE_PROMPT,
+      model: gemini({ model: "gemini-2.5-flash-lite" }),
+    });
+
+    const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(
+      result.state.data.summary
+    );
+    const { output: responseOutput } = await responseGenerator.run(
+      result.state.data.summary
+    );
 
     const isError =
       !result.state.data.summary ||
@@ -182,7 +239,7 @@ export const codeAgentFunction = inngest.createFunction(
         .insert(MessageTable)
         .values({
           projectId: event.data.projectId,
-          content: result.state.data.summary,
+          content: parseAgentOutput(responseOutput, "response"),
           role: "assistant",
           type: "result",
           userId: event.data.userId,
@@ -193,7 +250,7 @@ export const codeAgentFunction = inngest.createFunction(
         await db.insert(FragmentTable).values({
           messageId: newMessage.id,
           sandboxUrl,
-          title: "Fragment",
+          title: parseAgentOutput(fragmentTitleOutput, "fragment-title"),
           files: result.state.data.files,
         });
       }
@@ -202,9 +259,9 @@ export const codeAgentFunction = inngest.createFunction(
 
     return {
       sandboxUrl,
-      title: "Fragment",
+      title: parseAgentOutput(fragmentTitleOutput, "fragment-title"),
       files: result.state.data.files,
-      summary: result.state.data.summary,
+      summary: parseAgentOutput(responseOutput, "response"),
     };
   }
 );
