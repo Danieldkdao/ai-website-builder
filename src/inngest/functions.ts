@@ -27,6 +27,7 @@ export const codeAgentFunction = inngest.createFunction(
   async ({ event, step }) => {
     const sandboxId = await step.run("get-sandbox-id", async () => {
       const sandbox = await Sandbox.create("awb-nextjs-dd");
+      // await sandbox.setTimeout()
       return sandbox.sandboxId;
     });
 
@@ -37,7 +38,8 @@ export const codeAgentFunction = inngest.createFunction(
 
         const messages = await db.query.MessageTable.findMany({
           where: eq(MessageTable.projectId, event.data.projectId),
-          orderBy: desc(MessageTable.createdAt), //todo: change to asc if AI does not understand what is the latest message
+          orderBy: desc(MessageTable.createdAt),
+          limit: 5,
         });
 
         for (const message of messages) {
@@ -48,7 +50,7 @@ export const codeAgentFunction = inngest.createFunction(
           });
         }
 
-        return formattedMessages;
+        return formattedMessages.reverse();
       }
     );
 
