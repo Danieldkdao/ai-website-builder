@@ -16,19 +16,23 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FileExplorer } from "@/components/file-explorer";
 import { UserControl } from "@/components/user-control";
+import { useAuth } from "@clerk/nextjs";
 
 export const ProjectView = ({ projectId }: { projectId: string }) => {
+  const { has } = useAuth();
+  const hasProAccess = has?.({ plan: "pro" });
   const [activeFragment, setActiveFragment] = useState<FragmentType | null>(
     null
   );
   const [tabState, setTabState] = useState<"preview" | "code">("preview");
   return (
     <div className="h-screen">
-      <ResizablePanelGroup direction="horizontal">
+      <ResizablePanelGroup direction="horizontal" id="project-view-panel-group">
         <ResizablePanel
           defaultSize={35}
           minSize={20}
           className="flex flex-col min-h-0"
+          id="project-view-panel-1"
         >
           <Suspense fallback={<p>Loading project...</p>}>
             <ProjectHeader projectId={projectId} />
@@ -41,38 +45,52 @@ export const ProjectView = ({ projectId }: { projectId: string }) => {
             />
           </Suspense>
         </ResizablePanel>
-        <ResizableHandle className="hover:bg-primary transition-colors"/>
-        <ResizablePanel defaultSize={65} minSize={50}>
+        <ResizableHandle
+          className="hover:bg-primary transition-colors"
+          id="project-view-panel-handle"
+        />
+        <ResizablePanel defaultSize={65} minSize={50} id="project-view-panel-2">
           <Tabs
             className="h-full gap-y-0"
             defaultValue="preview"
             value={tabState}
             onValueChange={(value) => setTabState(value as "preview" | "code")}
+            id="tabs"
           >
             <div className="w-full flex items-center p-2 border-b gap-x-2">
-              <TabsList className="h-8 p-0 border rounded-md">
-                <TabsTrigger value="preview" className="rounded-md">
+              <TabsList className="h-8 p-0 border rounded-md" id="tabs-list">
+                <TabsTrigger
+                  value="preview"
+                  className="rounded-md"
+                  id="tabs-trigger-1"
+                >
                   <EyeIcon />
                   <span>Demo</span>
                 </TabsTrigger>
-                <TabsTrigger value="code" className="rounded-md">
+                <TabsTrigger
+                  value="code"
+                  className="rounded-md"
+                  id="tabs-trigger-2"
+                >
                   <CodeIcon />
                   <span>Code</span>
                 </TabsTrigger>
               </TabsList>
               <div className="ml-auto flex items-center gap-x-2">
-                <Button asChild size="sm" variant="tertiary">
-                  <Link href="/pricing">
-                    <CrownIcon /> Upgrade
-                  </Link>
-                </Button>
+                {!hasProAccess && (
+                  <Button asChild size="sm" variant="tertiary">
+                    <Link href="/pricing">
+                      <CrownIcon /> Upgrade
+                    </Link>
+                  </Button>
+                )}
                 <UserControl />
               </div>
             </div>
-            <TabsContent value="preview">
+            <TabsContent value="preview" id="tabs-content-1">
               {!!activeFragment && <FragmentWeb data={activeFragment} />}
             </TabsContent>
-            <TabsContent value="code" className="min-h-0">
+            <TabsContent value="code" className="min-h-0" id="tabs-content-2">
               {!!activeFragment?.files && (
                 <FileExplorer
                   files={activeFragment.files as { [path: string]: string }}
