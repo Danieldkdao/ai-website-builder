@@ -1,0 +1,21 @@
+diff --git a/node_modules/rate-limiter-flexible/lib/RateLimiterDrizzleNonAtomic.js b/node_modules/rate-limiter-flexible/lib/RateLimiterDrizzleNonAtomic.js
+index 1c3be81..fa6e42c 100644
+--- a/node_modules/rate-limiter-flexible/lib/RateLimiterDrizzleNonAtomic.js
++++ b/node_modules/rate-limiter-flexible/lib/RateLimiterDrizzleNonAtomic.js
+@@ -14,14 +14,12 @@ async function getDrizzleOperators() {
+ 
+   try {
+     // Use dynamic import to prevent static analysis tools from detecting the import
+-    function getPackageName() {
+-      return ['drizzle', 'orm'].join('-');
+-    }
+-    const drizzleOrm = await import(`${getPackageName()}`);
++    const drizzleOrm = await import("drizzle-orm");
+     const { and, or, gt, lt, eq, isNull, sql } = drizzleOrm.default || drizzleOrm;
+     drizzleOperators = { and, or, gt, lt, eq, isNull, sql };
+     return drizzleOperators;
+   } catch (error) {
++    console.log(error)
+     throw new RateLimiterDrizzleError(
+       'drizzle-orm is not installed. Please install drizzle-orm to use RateLimiterDrizzleNonAtomic.'
+     );

@@ -112,16 +112,28 @@ export const FileExplorer = ({ files }: { files: FileCollection }) => {
   }, [selectedFile, files]);
 
   return (
-    <ResizablePanelGroup direction="horizontal">
-      <ResizablePanel defaultSize={30} minSize={30} className="bg-sidebar">
+    <ResizablePanelGroup direction="horizontal" id="file-explorer-panel-group">
+      <ResizablePanel
+        defaultSize={30}
+        minSize={30}
+        className="bg-sidebar"
+        id="file-explorer-panel-1"
+      >
         <TreeView
           data={treeData}
           value={selectedFile}
           onSelect={handleFileSelect}
         />
       </ResizablePanel>
-      <ResizableHandle className="hover:bg-primary transition-colors" />
-      <ResizablePanel defaultSize={70} minSize={50}>
+      <ResizableHandle
+        className="hover:bg-primary transition-colors"
+        id="file-explorer-panel-handle"
+      />
+      <ResizablePanel
+        defaultSize={70}
+        minSize={50}
+        id="file-explorer-panel-2"
+      >
         {selectedFile && files[selectedFile] ? (
           <div className="h-full w-full flex flex-col">
             <div className="border-b bg-sidebar px-4 py-2 flex justify-between items-center gap-x-2">
